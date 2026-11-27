@@ -107,8 +107,3 @@ if __name__ == "__main__":
 def webhook_test():
     return "GitHub Webhook Working!"
 #webhook is working or not 
-@app.route('/health')
-def health():
-    return jsonify({
-        "status": "healthy"
-    })
