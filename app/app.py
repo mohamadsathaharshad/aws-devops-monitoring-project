@@ -97,6 +97,12 @@ if __name__ == "__main__":
         port=5000,
         debug=False
     )
-
 # Devops Project version -2
 
+# --------------------------------
+# 8. github webhook
+# --------------------------------
+
+@app.route("/webhook-test")
+def webhook_test():
+    return "GitHub Webhook Working!"
