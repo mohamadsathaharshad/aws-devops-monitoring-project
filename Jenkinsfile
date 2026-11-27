@@ -2,45 +2,113 @@ pipeline {
 
     agent any
 
+    environment {
+        DOCKERHUB_REPO = 'mohamadsathaharshad/new-flask-app'
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
-                echo 'Checking source code'
+                echo 'Checking GitHub source code'
+
                 checkout scm
             }
         }
 
-        stage('Build') {
+        stage('Install Dependencies') {
             steps {
-                echo 'Building Flask Application'
-                sh 'docker --version'
+                echo 'Installing Python dependencies'
+
+                sh '''
+                    python3 -m venv .venv
+                    .venv/bin/pip install -r requirements.txt
+                '''
             }
         }
 
-        stage('Test') {
+        stage('Run Tests') {
             steps {
-                echo 'Testing Flask Application'
-                sh 'python3 --version'
+                echo 'Running Flask Application Tests'
+
+                sh '.venv/bin/pytest -v'
             }
         }
 
         stage('Docker Build') {
             steps {
                 echo 'Building Docker Image'
-                sh 'docker build -t flask-devops-app:latest .'
+
+                sh '''
+                    docker build \
+                    -t $DOCKERHUB_REPO:$BUILD_NUMBER \
+                    -t $DOCKERHUB_REPO:latest .
+                '''
             }
         }
 
+        stage('Docker Hub Push') {
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login \
+                        -u "$DOCKER_USER" --password-stdin
+
+                        docker push $DOCKERHUB_REPO:$BUILD_NUMBER
+
+                        docker push $DOCKERHUB_REPO:latest
+
+                        docker logout
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                echo 'Deploying Flask Application'
+
+                sh '''
+                    docker rm -f flask-devops-app || true
+
+                    docker run -d \
+                    --name flask-devops-app \
+                    -p 5000:5000 \
+                    $DOCKERHUB_REPO:$BUILD_NUMBER
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                echo 'Checking Application'
+
+                sh '''
+                    sleep 5
+
+                    docker ps
+
+                    curl -f http://localhost:5000/health
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo 'Pipeline Completed Successfully!'
+            echo 'CI/CD Pipeline Completed Successfully!'
         }
 
         failure {
-            echo 'Pipeline Failed! Check Console Output.'
+            echo 'CI/CD Pipeline Failed! Check Console Output.'
         }
     }
 }
