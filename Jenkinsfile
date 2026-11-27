@@ -11,15 +11,12 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checking GitHub source code'
-
                 checkout scm
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                echo 'Installing Python dependencies'
-
                 sh '''
                     python3 -m venv .venv
                     .venv/bin/pip install -r requirements.txt
@@ -29,16 +26,12 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                echo 'Running Flask Application Tests'
-
                 sh '.venv/bin/pytest -v'
             }
         }
 
         stage('Docker Build') {
             steps {
-                echo 'Building Docker Image'
-
                 sh '''
                     docker build \
                     -t $DOCKERHUB_REPO:$BUILD_NUMBER \
@@ -74,8 +67,6 @@ pipeline {
 
         stage('Deploy Container') {
             steps {
-                echo 'Deploying Flask Application'
-
                 sh '''
                     docker rm -f flask-devops-app || true
 
@@ -89,13 +80,9 @@ pipeline {
 
         stage('Verify Deployment') {
             steps {
-                echo 'Checking Application'
-
                 sh '''
                     sleep 5
-
                     docker ps
-
                     curl -f http://localhost:5000/health
                 '''
             }
